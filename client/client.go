@@ -16,12 +16,30 @@ import (
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/termios"
 	"github.com/mattn/go-colorable"
+	"../certgen"
+	"os/user"
+	"path"
 )
 
+func loadPublicKey(tlsConfig *tls.Config) {
+	usr, _ := user.Current()
+	home := usr.HomeDir
+	crtPath := path.Join(home, ".httpshell/crt.pem")
+	keyPath := path.Join(home, ".httpshell/key.pem")
+	certificate, e := tls.LoadX509KeyPair(crtPath, keyPath)
+	if e != nil {
+		panic(e)
+	}
+	tlsConfig.Certificates = make([]tls.Certificate, 1)
+	tlsConfig.Certificates[0] = certificate
+}
+
 func rawWebSocket(url string) (*websocket.Conn, error) {
-	httpTransport := http.Transport{}
+	tlsConfig := tls.Config{InsecureSkipVerify: true}
+	loadPublicKey(&tlsConfig)
+	httpTransport := http.Transport{TLSClientConfig: &tlsConfig}
 	dialer := websocket.Dialer{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: httpTransport.TLSClientConfig,
 		Proxy:           httpTransport.Proxy,
 	}
 
@@ -46,13 +64,20 @@ func getPatchStdout() io.Writer {
 
 var server = ""
 var debug = false
+var genCert = false
 
 func init() {
 	flag.BoolVar(&debug, "d", debug, "Debug")
+	flag.BoolVar(&genCert, "g", genCert, "genCert")
 	flag.Parse()
 }
 
 func main() {
+	if genCert {
+		certgen.CreateNewKeyPair("")
+		os.Exit(0)
+	}
+
 	if flag.NArg() == 0 {
 		fmt.Println("No server address specified.")
 		flag.PrintDefaults()

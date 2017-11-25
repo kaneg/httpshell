@@ -5,20 +5,27 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-
 	"github.com/gorilla/websocket"
+	"crypto/tls"
+	"../certgen"
+	"io/ioutil"
+	"crypto/x509"
+	"os/user"
+	"path"
 )
 
-const Row = 50
+const Row = 30
 const Column = 120
 
 var listenAddress = ":5000"
 var command = []string{"bash"}
 var debug = false
+var authByKey = false
 
 func init() {
 	flag.StringVar(&listenAddress, "l", listenAddress, "Listen address")
 	flag.BoolVar(&debug, "d", debug, "Debug")
+	flag.BoolVar(&authByKey, "k", authByKey, "authByKey")
 	flag.Parse()
 }
 
@@ -65,6 +72,17 @@ func createHandler(command [] string) func(http.ResponseWriter, *http.Request) {
 	return wsHandler
 }
 
+func loadTrustedClientCerts(config *tls.Config) {
+	usr, _ := user.Current()
+	home := usr.HomeDir
+	bytes, err := ioutil.ReadFile(path.Join(home, "/.httpshell/authorized.pem"))
+	if err != nil {
+		panic(err)
+	}
+	config.ClientCAs = x509.NewCertPool()
+	config.ClientCAs.AppendCertsFromPEM(bytes)
+}
+
 func main() {
 	cmd := flag.Args()
 	if flag.NArg() > 0 {
@@ -76,8 +94,18 @@ func main() {
 	}
 	http.HandleFunc("/", createHandler(command))
 	fmt.Println("Server Started on ", listenAddress)
-	err := http.ListenAndServe(listenAddress, nil)
+	config := tls.Config{}
+	certificate, err := certgen.CreateNewCert("")
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
+	config.Certificates = make([]tls.Certificate, 1)
+	config.Certificates[0] = *certificate
+	if authByKey {
+		config.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+	loadTrustedClientCerts(&config)
+	server := &http.Server{Addr: listenAddress, TLSConfig: &config}
+	server.ListenAndServeTLS("", "")
+
 }
