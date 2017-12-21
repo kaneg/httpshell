@@ -27,11 +27,10 @@ func loadPublicKey(tlsConfig *tls.Config) {
 	crtPath := path.Join(home, ".httpshell/crt.pem")
 	keyPath := path.Join(home, ".httpshell/key.pem")
 	certificate, e := tls.LoadX509KeyPair(crtPath, keyPath)
-	if e != nil {
-		panic(e)
+	if e == nil {
+		tlsConfig.Certificates = make([]tls.Certificate, 1)
+		tlsConfig.Certificates[0] = certificate
 	}
-	tlsConfig.Certificates = make([]tls.Certificate, 1)
-	tlsConfig.Certificates[0] = certificate
 }
 
 func rawWebSocket(url string) (*websocket.Conn, error) {

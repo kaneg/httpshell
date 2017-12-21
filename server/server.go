@@ -103,8 +103,8 @@ func main() {
 	config.Certificates[0] = *certificate
 	if authByKey {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
+		loadTrustedClientCerts(&config)
 	}
-	loadTrustedClientCerts(&config)
 	server := &http.Server{Addr: listenAddress, TLSConfig: &config}
 	server.ListenAndServeTLS("", "")
 
