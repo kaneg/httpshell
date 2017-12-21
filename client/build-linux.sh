@@ -1,1 +1,1 @@
-GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o httpshell
+GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o httpshell-linux
