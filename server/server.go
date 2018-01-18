@@ -7,11 +7,13 @@ import (
 	"strconv"
 	"github.com/gorilla/websocket"
 	"crypto/tls"
-	"../certgen"
+	"github.com/kaneg/httpshell/certgen"
 	"io/ioutil"
 	"crypto/x509"
 	"os/user"
 	"path"
+	"text/template"
+	"bytes"
 )
 
 const Row = 30
@@ -29,7 +31,21 @@ func init() {
 	flag.Parse()
 }
 
-func createHandler(command [] string) func(http.ResponseWriter, *http.Request) {
+func renderCommand(rawCommand string, context *map[string]string) string{
+	if debug {
+		fmt.Println("Parse:", rawCommand)
+	}
+	t :=template.Must(template.New("rawCommand").Parse(rawCommand))
+	var doc bytes.Buffer
+	
+	t.Execute(&doc, context)
+	if debug {
+		fmt.Println("Parse result:", rawCommand)
+	}
+	return doc.String()
+}
+
+func createHandler(rawCommands [] string) func(http.ResponseWriter, *http.Request) {
 	wsHandler := func(writer http.ResponseWriter, request *http.Request) {
 		upgrader := websocket.Upgrader{
 			ReadBufferSize:  2048,
@@ -39,10 +55,22 @@ func createHandler(command [] string) func(http.ResponseWriter, *http.Request) {
 		if err != nil {
 			panic(nil)
 		}
+		request.ParseForm()
 		if debug {
 			fmt.Println(conn.RemoteAddr())
 			fmt.Println(request.RequestURI)
+			fmt.Println(request.Form)
 		}
+		context := make(map[string]string)
+		for k,v:= range request.Form{
+			context[k] = v[0]
+		}
+		var command = make([]string, len(rawCommands))
+		for i:=0;i<len(rawCommands);i++{
+			rawCommand := rawCommands[i]
+			command[i] = renderCommand(rawCommand, &context)
+		}
+
 		rowS := request.FormValue("row")
 		columnS := request.FormValue("column")
 		row := Row
@@ -62,6 +90,7 @@ func createHandler(command [] string) func(http.ResponseWriter, *http.Request) {
 		if debug {
 			fmt.Println("Row:", row)
 			fmt.Println("Column:", column)
+			fmt.Println("Command:", command)
 			fmt.Println("Shell Start")
 		}
 		runShell(conn, command, row, column)

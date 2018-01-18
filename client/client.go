@@ -16,7 +16,7 @@ import (
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/termios"
 	"github.com/mattn/go-colorable"
-	"../certgen"
+	"github.com/kaneg/httpshell/certgen"
 	"os/user"
 	"path"
 )
@@ -101,7 +101,10 @@ func main() {
 	} else {
 		address.Scheme = "ws"
 	}
-	address.RawQuery = fmt.Sprintf("row=%d&column=%d", row, column)
+	if debug{
+		fmt.Println("Raw Query:", address.RawQuery)
+	}
+	address.RawQuery = fmt.Sprintf("row=%d&column=%d%s", row, column, "&"+address.RawQuery)
 	serverAddr := address.String()
 
 	if debug {
