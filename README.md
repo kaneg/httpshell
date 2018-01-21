@@ -1,5 +1,11 @@
 # httpshell
 Shell via http protocol
+#### Features
+* Written by Go
+* Https based
+* Can authenticated by certificate
+* Can use http proxy
+* Customize command to run
 
 ### Usage
 
@@ -22,3 +28,22 @@ If $HOME/.httpshell/crt.pem and key.pem are available, they will be automaticall
 Typical use case:
 
 `httpshell https://192.168.1.1:2200`
+
+### Examples
+1. Auth by built-in username/password of Linux:
+
+    ```shell
+    httpshelld login
+    ```
+1. Provide shell for each Docker container by dynamically parameter:
+    * In server side:
+
+    ```shell
+    httpshelld docker exec -it {{.docker}} bash
+    
+    ```
+    * In client side, access shell of Docker container named t1
+    
+    ```bash
+    httpshell https://localhost:5000?docker=t1
+    ```
