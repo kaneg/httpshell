@@ -39,7 +39,7 @@ func rawWebSocket(url string) (*websocket.Conn, error) {
 	httpTransport := http.Transport{TLSClientConfig: &tlsConfig}
 	dialer := websocket.Dialer{
 		TLSClientConfig: httpTransport.TLSClientConfig,
-		Proxy:           httpTransport.Proxy,
+		Proxy:           http.ProxyFromEnvironment,
 	}
 
 	headers := http.Header{}
