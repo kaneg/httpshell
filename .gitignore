@@ -15,3 +15,6 @@
 .idea
 httpshelld
 httpshell
+httpshell-mac
+*.tar.gz
+*.zip
