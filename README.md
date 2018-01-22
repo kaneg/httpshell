@@ -1,4 +1,4 @@
-# httpshell
+# HttpShell ![](https://api.travis-ci.org/kaneg/httpshell.svg?branch=master)
 Shell via http protocol
 #### Features
 * Written by Go
