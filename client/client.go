@@ -19,7 +19,11 @@ import (
 	"github.com/kaneg/httpshell/certgen"
 	"os/user"
 	"path"
+	"time"
 )
+
+const writeWait = 10 * time.Second
+const pingPeriod = 60 * time.Second
 
 func loadPublicKey(tlsConfig *tls.Config) {
 	usr, _ := user.Current()
@@ -51,6 +55,19 @@ func rawWebSocket(url string) (*websocket.Conn, error) {
 
 	return conn, err
 
+}
+
+func ping(conn *websocket.Conn) {
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if err := conn.WriteControl(websocket.PingMessage, []byte("hello"), time.Now().Add(writeWait)); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
 }
 
 func getPatchStdout() io.Writer {
@@ -101,7 +118,7 @@ func main() {
 	} else {
 		address.Scheme = "ws"
 	}
-	if debug{
+	if debug {
 		fmt.Println("Raw Query:", address.RawQuery)
 	}
 	address.RawQuery = fmt.Sprintf("row=%d&column=%d%s", row, column, "&"+address.RawQuery)
@@ -127,6 +144,7 @@ func main() {
 		panic(err)
 	}
 	defer termios.Restore(cfd, oldTtyState)
+	go ping(conn)
 	shared.WebsocketSendStream(conn, os.Stdin, -1)
 	<-shared.WebsocketRecvStream(getPatchStdout(), conn)
 }
