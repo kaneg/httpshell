@@ -1,4 +1,4 @@
-# HttpShell ![](https://api.travis-ci.org/kaneg/httpshell.svg?branch=master)
+# HttpShell [![Build Status](https://travis-ci.org/kaneg/httpshell.svg?branch=master)](https://travis-ci.org/kaneg/httpshell)
 Shell via http protocol
 #### Features
 * Written by Go
