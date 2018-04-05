@@ -143,8 +143,35 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	
 	defer termios.Restore(cfd, oldTtyState)
+
 	go ping(conn)
+
+	if runtime.GOOS != "windows"{
+		go termSizeLoop(conn)
+	}
+
 	shared.WebsocketSendStream(conn, os.Stdin, -1)
 	<-shared.WebsocketRecvStream(getPatchStdout(), conn)
+}
+
+
+func termSizeLoop(conn *websocket.Conn)  {
+	ch := make(chan os.Signal, 1)
+	notifySignalSIGWINCH(ch)
+	defer resetSignalSIGWINCH()
+
+	for {
+		if b, err := syscallTIOCGWINSZ(); err != nil {
+			panic(err)
+		} else {
+			if err := conn.WriteControl(websocket.PingMessage, []byte(b), time.Now().Add(writeWait)); err != nil {
+				fmt.Println(err)
+			}
+		}
+		select {
+		case <-ch:
+		}
+	}
 }

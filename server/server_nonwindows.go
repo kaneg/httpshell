@@ -3,24 +3,24 @@
 package main
 
 import (
-	"github.com/kr/pty"
-	"os/exec"
 	"github.com/gorilla/websocket"
+	"github.com/kr/pty"
 	"github.com/lxc/lxd/shared"
 	"os"
+	"os/exec"
 	"syscall"
 	"unsafe"
 )
 
-func resizeTerminal(width int, height int, f *os.File) error {
+func resizeTerminal(width uint16, height uint16, f *os.File) error {
 	window := struct {
 		row uint16
 		col uint16
 		x   uint16
 		y   uint16
 	}{
-		uint16(height),
-		uint16(width),
+		height,
+		width,
 		0,
 		0,
 	}
@@ -37,7 +37,7 @@ func resizeTerminal(width int, height int, f *os.File) error {
 	}
 }
 
-func runShell(conn *websocket.Conn, command []string, row, column int) {
+func runShell(conn *websocket.Conn, command []string, row, column uint16) {
 	c := exec.Command(command[0], command[1:]...)
 	f, err := pty.Start(c)
 
@@ -46,6 +46,8 @@ func runShell(conn *websocket.Conn, command []string, row, column int) {
 	}
 
 	resizeTerminal(column, row, f)
+
+	handlePing(conn, f)
 
 	go shared.WebsocketSendStream(conn, f, -1)
 	go shared.WebsocketRecvStream(f, conn)

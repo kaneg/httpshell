@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,6 +16,7 @@ import (
 	"path"
 	"text/template"
 	"bytes"
+	"github.com/kaneg/httpshell"
 )
 
 const Row = 30
@@ -31,13 +34,13 @@ func init() {
 	flag.Parse()
 }
 
-func renderCommand(rawCommand string, context *map[string]string) string{
+func renderCommand(rawCommand string, context *map[string]string) string {
 	if debug {
 		fmt.Println("Parse:", rawCommand)
 	}
-	t :=template.Must(template.New("rawCommand").Parse(rawCommand))
+	t := template.Must(template.New("rawCommand").Parse(rawCommand))
 	var doc bytes.Buffer
-	
+
 	t.Execute(&doc, context)
 	if debug {
 		fmt.Println("Parse result:", rawCommand)
@@ -62,11 +65,11 @@ func createHandler(rawCommands [] string) func(http.ResponseWriter, *http.Reques
 			fmt.Println(request.Form)
 		}
 		context := make(map[string]string)
-		for k,v:= range request.Form{
+		for k, v := range request.Form {
 			context[k] = v[0]
 		}
 		var command = make([]string, len(rawCommands))
-		for i:=0;i<len(rawCommands);i++{
+		for i := 0; i < len(rawCommands); i++ {
 			rawCommand := rawCommands[i]
 			command[i] = renderCommand(rawCommand, &context)
 		}
@@ -93,7 +96,9 @@ func createHandler(rawCommands [] string) func(http.ResponseWriter, *http.Reques
 			fmt.Println("Command:", command)
 			fmt.Println("Shell Start")
 		}
-		runShell(conn, command, row, column)
+
+		runShell(conn, command, uint16(row), uint16(column))
+
 		if debug {
 			fmt.Println("Shell End")
 		}
@@ -101,15 +106,30 @@ func createHandler(rawCommands [] string) func(http.ResponseWriter, *http.Reques
 	return wsHandler
 }
 
+func handlePing(conn *websocket.Conn, f *os.File) {
+	ph := conn.PingHandler()
+	ph2 := func(appData string) error {
+		err := ph(appData)
+		wsize := httpshell.Winsize{}
+		err2 := json.Unmarshal([]byte(appData), &wsize)
+		if err2 == nil {
+			resizeTerminal(wsize.Columns, wsize.Rows, f)
+		}
+
+		return err
+	}
+	conn.SetPingHandler(ph2)
+}
+
 func loadTrustedClientCerts(config *tls.Config) {
 	usr, _ := user.Current()
 	home := usr.HomeDir
-	bytes, err := ioutil.ReadFile(path.Join(home, "/.httpshell/authorized.pem"))
+	buffer, err := ioutil.ReadFile(path.Join(home, "/.httpshell/authorized.pem"))
 	if err != nil {
 		panic(err)
 	}
 	config.ClientCAs = x509.NewCertPool()
-	config.ClientCAs.AppendCertsFromPEM(bytes)
+	config.ClientCAs.AppendCertsFromPEM(buffer)
 }
 
 func main() {
