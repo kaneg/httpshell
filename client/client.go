@@ -12,14 +12,15 @@ import (
 
 	"crypto/tls"
 
-	"github.com/gorilla/websocket"
-	"github.com/lxc/lxd/shared"
-	"github.com/lxc/lxd/shared/termios"
-	"github.com/mattn/go-colorable"
-	"github.com/kaneg/httpshell/certgen"
 	"os/user"
 	"path"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/kaneg/httpshell/certgen"
+	"github.com/lxc/lxd/shared"
+	"github.com/lxc/lxd/shared/termios"
+	"github.com/mattn/go-colorable"
 )
 
 const writeWait = 10 * time.Second
@@ -105,11 +106,13 @@ func main() {
 	var err error
 
 	cfd := int(syscall.Stdin)
-	column, row, err := termios.GetSize(cfd)
+	column, row, err := termios.GetSize(int(syscall.Stdout))
 	if err == nil {
 		if debug {
 			fmt.Printf("Current window size is row=%d, column=%d\n", row, column)
 		}
+	} else if debug {
+		fmt.Println(err.Error())
 	}
 
 	address, _ := url.Parse(server)
@@ -143,12 +146,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	defer termios.Restore(cfd, oldTtyState)
 
 	go ping(conn)
 
-	if runtime.GOOS != "windows"{
+	if runtime.GOOS != "windows" {
 		go termSizeLoop(conn)
 	}
 
@@ -156,8 +159,7 @@ func main() {
 	<-shared.WebsocketRecvStream(getPatchStdout(), conn)
 }
 
-
-func termSizeLoop(conn *websocket.Conn)  {
+func termSizeLoop(conn *websocket.Conn) {
 	ch := make(chan os.Signal, 1)
 	notifySignalSIGWINCH(ch)
 	defer resetSignalSIGWINCH()
